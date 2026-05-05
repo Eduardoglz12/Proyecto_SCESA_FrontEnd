@@ -24,35 +24,23 @@ export function Dashboard() {
     try {
       setCargando(true);
 
-      // 1. Peticiones paralelas para ahorrar tiempo
-      const [resAlumnos, resAsistencia] = await Promise.all([
-        fetch(`${API_URL}/api/alumnos`),
-        fetch(`${API_URL}/api/asistencia`)
-      ]);
+      // Ahora solo hacemos UNA petición a la nueva ruta
+      const res = await fetch(`${API_URL}/api/asistencia/stats`);
+      if (!res.ok) throw new Error("Error en el servidor");
 
-      if (!resAlumnos.ok || !resAsistencia.ok) throw new Error("Error en el servidor");
+      const data = await res.json();
 
-      const listaAlumnos = await resAlumnos.json();
-      const listaAsistencia = await resAsistencia.json();
-
-      // 2. Lógica para filtrar solo los registros de HOY (YYYY-MM-DD)
-      const hoy = new Date().toISOString().split('T')[0];
-      const asistenciaHoy = listaAsistencia.filter((reg: any) => reg.fecha.startsWith(hoy));
-
-      const entradas = asistenciaHoy.filter((reg: any) => reg.evento === 'ENTRADA').length;
-      const salidas = asistenciaHoy.filter((reg: any) => reg.evento === 'SALIDA').length;
-
-      // 3. Actualizamos el estado con cálculos reales
+      // Actualizamos el estado directamente con lo que mandó el servidor
       setStats({
-        totalAlumnos: listaAlumnos.length,
-        entradasRegistradas: entradas,
-        totalPresentes: entradas - salidas, // Alumnos que entraron pero no han salido
-        alertasActivas: 0 // Por ahora lo dejamos en 0 hasta tener tabla de logs
+        totalAlumnos: data.totalAlumnos,
+        entradasRegistradas: data.entradasHoy,
+        totalPresentes: data.presentes,
+        alertasActivas: data.alertas
       });
 
     } catch (error) {
       console.error(error);
-      toast.error("Error al sincronizar datos del servidor");
+      toast.error("Error al sincronizar estadísticas");
     } finally {
       setCargando(false);
     }

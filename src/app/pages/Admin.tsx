@@ -197,7 +197,7 @@ export function Admin() {
         {/* Tabla de Registros en Tiempo Real */}
         <div className="bg-white rounded-lg shadow-md border overflow-hidden">
           <div className="p-4 bg-gray-50 border-b">
-            <h2 className="font-bold text-gray-700">Bitácora SIREA - CETIS 24</h2>
+            <h2 className="font-bold text-gray-700">Bitácora SCESA - CETIS 24</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">

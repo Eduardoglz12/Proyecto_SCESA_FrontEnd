@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash } from 'lucide-react';
+import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 
-// Interfaz alineada con tu AlumnoRequest de Ktor
 interface Alumno {
   numeroControl: string;
   nombreCompleto: string;
@@ -25,6 +24,10 @@ export function Alumnos() {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  // --- ESTADOS PARA EDICIÓN ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState('');
+
   const [formData, setFormData] = useState({
     numeroControl: '',
     nombreCompleto: '',
@@ -37,7 +40,7 @@ export function Alumnos() {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // 1. Cargar alumnos desde el servidor
+  // 1. Cargar alumnos
   const fetchAlumnos = async () => {
     try {
       setCargando(true);
@@ -56,7 +59,53 @@ export function Alumnos() {
     fetchAlumnos();
   }, []);
 
-  // 2. Guardar nuevo alumno
+  // 2. Función para Eliminar
+  const eliminarAlumno = async (nc: string, nombre: string) => {
+    if (!confirm(`¿Estás seguro de eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/alumnos/${nc}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        toast.success("Alumno eliminado correctamente");
+        fetchAlumnos();
+      } else {
+        const errorMsg = await res.text();
+        toast.error(`Error: ${errorMsg}`);
+      }
+    } catch (error) {
+      toast.error("No se pudo eliminar al alumno");
+    }
+  };
+
+  // 3. Preparar Edición (Llena el formulario con los datos existentes)
+  const prepararEdicion = (alumno: Alumno) => {
+    setFormData({
+      numeroControl: alumno.numeroControl,
+      nombreCompleto: alumno.nombreCompleto,
+      grado: alumno.grado.toString(),
+      grupo: alumno.grupo,
+      turno: alumno.turno,
+      nombreTutor: alumno.nombreTutor,
+      emailTutor: alumno.emailTutor
+    });
+    setEditingId(alumno.numeroControl);
+    setIsEditing(true);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 4. Cancelar Formulario (Limpia estados)
+  const cancelarFormulario = () => {
+    setShowForm(false);
+    setIsEditing(false);
+    setEditingId('');
+    setFormData({ numeroControl: '', nombreCompleto: '', grado: '', grupo: '', turno: '', nombreTutor: '', emailTutor: '' });
+  };
+
+  // 5. Guardar (POST o PUT)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -66,17 +115,20 @@ export function Alumnos() {
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/alumnos`, {
-        method: 'POST',
+      // Si estamos editando usamos PUT, si no usamos POST
+      const url = isEditing ? `${API_URL}/api/alumnos/${editingId}` : `${API_URL}/api/alumnos`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
-        toast.success(`Alumno ${formData.nombreCompleto} registrado`);
-        setShowForm(false);
-        setFormData({ numeroControl: '', nombreCompleto: '', grado: '', grupo: '', turno: '',nombreTutor: '', emailTutor: '' });
-        fetchAlumnos(); // Refrescar lista
+        toast.success(isEditing ? "Datos actualizados" : "Alumno registrado");
+        cancelarFormulario();
+        fetchAlumnos();
       } else {
         const errorMsg = await response.text();
         toast.error(`Error: ${errorMsg}`);
@@ -111,18 +163,19 @@ export function Alumnos() {
                 <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
              </Button>
             <Button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => showForm ? cancelarFormulario() : setShowForm(true)}
               className="bg-[#1A3A5C] hover:bg-[#1A3A5C]/90 text-white"
             >
-              <UserPlus className="w-4 h-4 mr-2" />
-              {showForm ? 'Cancelar' : 'Nuevo Alumno'}
+              {showForm ? 'Cancelar' : <><UserPlus className="w-4 h-4 mr-2" /> Nuevo Alumno</>}
             </Button>
           </div>
         </div>
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 mb-6 animate-in fade-in slide-in-from-top-4">
-            <h2 className="text-xl font-bold text-[#1E1E1E] mb-6">Registrar Nuevo Alumno</h2>
+            <h2 className="text-xl font-bold text-[#1E1E1E] mb-6">
+                {isEditing ? `Editando Alumno: ${editingId}` : 'Registrar Nuevo Alumno'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -131,9 +184,10 @@ export function Alumnos() {
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       value={formData.numeroControl}
+                      disabled={isEditing} // No dejamos cambiar el NC si estamos editando
                       onChange={(e) => setFormData({ ...formData, numeroControl: e.target.value })}
                       placeholder="Ej. 2134567890"
-                      className="pl-10 bg-white border-gray-300"
+                      className="pl-10 bg-white border-gray-300 disabled:bg-gray-100"
                       required
                     />
                   </div>
@@ -184,36 +238,37 @@ export function Alumnos() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#1E1E1E] mb-2">
-                  Nombre del Tutor
-                </label>
-                <Input
-                  value={formData.nombreTutor}
-                  onChange={(e) => setFormData({ ...formData, nombreTutor: e.target.value })}
-                  placeholder="Nombre completo del tutor"
-                  className="bg-white border-gray-300"
-                  required
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1E1E1E] mb-2">Nombre del Tutor</label>
+                  <Input
+                    value={formData.nombreTutor}
+                    onChange={(e) => setFormData({ ...formData, nombreTutor: e.target.value })}
+                    placeholder="Nombre completo del tutor"
+                    className="bg-white border-gray-300"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#1E1E1E] mb-2">
-                  Email del Tutor
-                </label>
-                <Input
-                  type="email"
-                  value={formData.emailTutor}
-                  onChange={(e) => setFormData({ ...formData, emailTutor: e.target.value })}
-                  placeholder="correo@ejemplo.com"
-                  className="bg-white border-gray-300"
-                  required
-                />
+                <div>
+                  <label className="block text-sm font-medium text-[#1E1E1E] mb-2">Email del Tutor</label>
+                  <Input
+                    type="email"
+                    value={formData.emailTutor}
+                    onChange={(e) => setFormData({ ...formData, emailTutor: e.target.value })}
+                    placeholder="correo@ejemplo.com"
+                    className="bg-white border-gray-300"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-[#22C55E] hover:bg-[#22C55E]/90 text-white">Guardar Alumno</Button>
+                <Button type="button" variant="outline" onClick={cancelarFormulario}>Cancelar</Button>
+                <Button type="submit" className="bg-[#22C55E] hover:bg-[#22C55E]/90 text-white gap-2">
+                  <Save className="w-4 h-4" />
+                  {isEditing ? 'Guardar Cambios' : 'Registrar Alumno'}
+                </Button>
               </div>
             </form>
           </div>
@@ -262,8 +317,22 @@ export function Alumnos() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="text-[#2E6DA4] hover:bg-blue-50"><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" className="text-[#EF4444] hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => prepararEdicion(alumno)}
+                            className="text-[#2E6DA4] hover:bg-blue-50"
+                        >
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => eliminarAlumno(alumno.numeroControl, alumno.nombreCompleto)}
+                            className="text-[#EF4444] hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>

@@ -26,7 +26,7 @@ export function Alumnos() {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // --- ESTADOS PARA EDICIÓN ---
+  // ESTADOS PARA EDICIÓN
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState('');
 
@@ -148,20 +148,19 @@ export function Alumnos() {
 // 1. Crea la referencia para el input de archivo
 const fileInputRef = useRef<HTMLInputElement>(null);
 
-// 2. Función que se dispara cuando seleccionas un archivo
+// 2. Función que se dispara cuando se selecciona un archivo
 const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  // FormData es la forma estándar de enviar archivos por HTTP
+  // FormData para enviar archivos por HTTP
   const formData = new FormData();
   formData.append("file", file);
 
   try {
     toast.loading("Procesando archivo CSV...", { id: "import" });
 
-    // OJO: Al usar FormData con fetch, NO debes poner el header 'Content-Type'.
-    // El navegador automáticamente pone 'multipart/form-data' con el boundary correcto.
+
     const response = await fetch(`${API_URL}/api/alumnos/importar`, {
       method: 'POST',
       body: formData
@@ -178,7 +177,7 @@ const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
   } catch (error) {
     toast.error("Error de conexión al importar", { id: "import" });
   } finally {
-    // Limpiar el input para que puedas volver a subir el mismo archivo si es necesario
+    // Limpiar el input para volver a subir el mismo archivo si es necesario
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 };

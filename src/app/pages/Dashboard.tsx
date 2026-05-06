@@ -24,7 +24,7 @@ export function Dashboard() {
     try {
       setCargando(true);
 
-      // Ahora solo hacemos UNA petición a la nueva ruta
+      // Hacemos solo una petición a la nueva ruta
       const res = await fetch(`${API_URL}/api/asistencia/stats`);
       if (!res.ok) throw new Error("Error en el servidor");
 
@@ -171,7 +171,7 @@ export function Dashboard() {
             <h2 className="text-xl font-bold text-[#1E1E1E] mb-4">Alertas Recientes</h2>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="space-y-3">
-                {/* Aquí podrías mapear un array de alertas reales en el futuro */}
+                {/* Mapear un array de alertas reales en el futuro */}
                 <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
                   <AlertTriangle className="w-5 h-5 text-[#EF4444] flex-shrink-0 mt-0.5" />
                   <div>

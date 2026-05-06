@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 
-// 1. Interfaz que viene de tu backend en Ktor
+// 1. Interfaz que viene del backend en Ktor
 interface AsistenciaBackend {
   id: number;
   numeroControl: string;
@@ -14,7 +14,7 @@ interface AsistenciaBackend {
   grupo: string;
   turno: string;
   evento: string;
-  fecha: string; // Formato ISO de LocalDateTime
+  fecha: string;
   operador: number;
 }
 
@@ -80,11 +80,11 @@ export function Admin() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- LÓGICA DE FILTRADO Y ESTADÍSTICAS ---
+  // LÓGICA DE FILTRADO Y ESTADÍSTICAS
 
   const fechaHoyStr = new Date().toLocaleDateString('es-MX');
 
-  // Estadísticas filtradas solo para "Hoy"
+  // Estadísticas filtradas solo para Hoy
   const entradasHoyCount = registros.filter(r => r.tipo === 'Entrada' && r.fecha === fechaHoyStr).length;
   const salidasHoyCount = registros.filter(r => r.tipo === 'Salida' && r.fecha === fechaHoyStr).length;
 
@@ -169,7 +169,7 @@ export function Admin() {
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="Grupo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los Grupos</SelectItem>
-              {/* Aquí podrías mapear grupos únicos de tus registros */}
+              {/* Mapear grupos únicos de los registros */}
               <SelectItem value="6A">6to A</SelectItem>
               <SelectItem value="6B">6to B</SelectItem>
             </SelectContent>

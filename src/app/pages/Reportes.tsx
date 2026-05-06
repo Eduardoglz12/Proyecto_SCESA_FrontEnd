@@ -48,7 +48,7 @@ export function Reportes() {
 
   useEffect(() => { cargarDatos(); }, []);
 
-  // --- LÓGICA DE PROCESAMIENTO DE DATOS ---
+  // LÓGICA DE PROCESAMIENTO DE DATOS
   const reportData = useMemo(() => {
     if (alumnos.length === 0) return { diaria: [], puntualidad: [], porGrupo: [] };
 

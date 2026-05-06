@@ -16,7 +16,7 @@ export function Login() {
     setError('');
     setLoading(true);
 
-    // Simulación de autenticación
+    // Simulación de autenticación (Falta implemetación de usuarios y sesiones)
     setTimeout(() => {
       if (usuario === 'admin' && password === 'cetis24') {
         localStorage.setItem('scesa_auth', 'true');

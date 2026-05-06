@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { useRef } from 'react';
+import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save, Upload } from 'lucide-react';
 
 interface Alumno {
   numeroControl: string;
@@ -143,6 +145,44 @@ export function Alumnos() {
     alumno.numeroControl.includes(searchTerm)
   );
 
+// 1. Crea la referencia para el input de archivo
+const fileInputRef = useRef<HTMLInputElement>(null);
+
+// 2. Función que se dispara cuando seleccionas un archivo
+const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // FormData es la forma estándar de enviar archivos por HTTP
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    toast.loading("Procesando archivo CSV...", { id: "import" });
+
+    // OJO: Al usar FormData con fetch, NO debes poner el header 'Content-Type'.
+    // El navegador automáticamente pone 'multipart/form-data' con el boundary correcto.
+    const response = await fetch(`${API_URL}/api/alumnos/importar`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const msg = await response.text();
+
+    if (response.ok) {
+      toast.success(msg, { id: "import" });
+      fetchAlumnos(); // Refrescar la tabla para ver los nuevos datos
+    } else {
+      toast.error(`Error: ${msg}`, { id: "import" });
+    }
+  } catch (error) {
+    toast.error("Error de conexión al importar", { id: "import" });
+  } finally {
+    // Limpiar el input para que puedas volver a subir el mismo archivo si es necesario
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+};
+
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       <Header title="Gestión de Alumnos" />
@@ -159,9 +199,28 @@ export function Alumnos() {
           </Button>
 
           <div className="flex gap-2">
-             <Button variant="outline" onClick={fetchAlumnos} disabled={cargando}>
-                <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
-             </Button>
+            <Button variant="outline" onClick={fetchAlumnos} disabled={cargando}>
+              <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
+            </Button>
+
+            {/* Input oculto controlado por el botón */}
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImportCSV}
+            />
+
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="border-[#1A3A5C] text-[#1A3A5C] hover:bg-slate-50"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Importar CSV
+            </Button>
+
             <Button
               onClick={() => showForm ? cancelarFormulario() : setShowForm(true)}
               className="bg-[#1A3A5C] hover:bg-[#1A3A5C]/90 text-white"

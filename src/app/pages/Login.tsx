@@ -33,8 +33,11 @@ export function Login() {
       <div className="w-full max-w-md">
         {/* Logo y Header */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-[#1A3A5C] rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">CETIS</span>
+          <div className="w-24 h-24 bg-[#ffffff] rounded-full flex items-center justify-center mx-auto mb-4">
+            <img 
+              src="src/assets/logo_cetis24.png" 
+              alt="Logo oficial del CETIS 24"
+               />
           </div>
           <h1 className="text-2xl font-bold text-[#1E1E1E] mb-2">Sistema SCESA</h1>
           <p className="text-[#6B7280]">Control de Entradas y Salidas para Alumnos</p>

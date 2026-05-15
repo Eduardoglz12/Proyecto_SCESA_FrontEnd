@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save } from 'lucide-react';
+import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save, Upload } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { useRef } from 'react';
-import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save, Upload } from 'lucide-react';
 
 interface Alumno {
   numeroControl: string;

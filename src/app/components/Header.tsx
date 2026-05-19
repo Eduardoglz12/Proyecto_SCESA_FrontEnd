@@ -21,7 +21,10 @@ export function Header({ title, showLogout = true }: HeaderProps) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-            <span className="text-[#1A3A5C] font-bold text-sm">CETIS</span>
+            <img 
+              src="src/assets/logo_cetis24.png" 
+              alt="Logo oficial del CETIS 24"
+               />
           </div>
           <div>
             <h1 className="text-xl font-bold">{title}</h1>

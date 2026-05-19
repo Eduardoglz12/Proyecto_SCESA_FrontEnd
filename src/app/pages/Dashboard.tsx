@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import { StatCard } from '../components/StatCard';
-import { Users, UserCheck, AlertTriangle, UserPlus, BarChart3, Shield, RefreshCw } from 'lucide-react';
+import { Users, UserCheck, AlertTriangle, UserPlus, BarChart3, Shield, RefreshCw, Settings } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+interface DashboardStats {
+  totalAlumnos: number;
+  entradasHoy: number;
+  presentes: number;
+  alertas: number;
+}
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [cargando, setCargando] = useState(true);
 
-  // Estado para los datos reales del servidor
   const [stats, setStats] = useState({
     totalPresentes: 0,
     entradasRegistradas: 0,
@@ -18,19 +28,11 @@ export function Dashboard() {
     totalAlumnos: 0
   });
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
   const cargarDatos = async () => {
     try {
       setCargando(true);
+      const data = await api.get<DashboardStats>('/api/asistencia/stats');
 
-      // Hacemos solo una petición a la nueva ruta
-      const res = await fetch(`${API_URL}/api/asistencia/stats`);
-      if (!res.ok) throw new Error("Error en el servidor");
-
-      const data = await res.json();
-
-      // Actualizamos el estado directamente con lo que mandó el servidor
       setStats({
         totalAlumnos: data.totalAlumnos,
         entradasRegistradas: data.entradasHoy,
@@ -38,46 +40,57 @@ export function Dashboard() {
         alertasActivas: data.alertas
       });
 
-    } catch (error) {
-      console.error(error);
-      toast.error("Error al sincronizar estadísticas");
+    } catch (error: any) {
+      toast.error(error.message || "Error al sincronizar estadísticas");
     } finally {
       setCargando(false);
     }
   };
 
-  // Carga inicial y refresco automático cada minuto
   useEffect(() => {
     cargarDatos();
     const interval = setInterval(cargarDatos, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const modules = [
-    {
-      title: 'Gestión de Alumnos',
-      description: 'Alta, modificación y consulta',
-      icon: UserPlus,
-      path: '/alumnos',
-      color: 'bg-[#1A3A5C]'
-    },
-    {
-      title: 'Panel Administrativo',
-      description: 'Registros en tiempo real',
-      icon: Shield,
-      path: '/admin',
-      color: 'bg-[#2E6DA4]'
-    },
-    {
-      title: 'Reportes y Estadísticas',
-      description: 'Análisis y reportes de asistencia',
-      icon: BarChart3,
-      path: '/reportes',
-      color: 'bg-[#1A3A5C]'
-    }
-  ];
+  const modules = useMemo(() => {
+    const baseModules = [
+      {
+        title: 'Gestión de Alumnos',
+        description: 'Alta, modificación y consulta',
+        icon: UserPlus,
+        path: '/alumnos',
+        color: 'bg-[#1A3A5C]'
+      },
+      {
+        title: 'Panel Administrativo',
+        description: 'Registros en tiempo real',
+        icon: Shield,
+        path: '/admin',
+        color: 'bg-[#2E6DA4]'
+      },
+      {
+        title: 'Reportes y Estadísticas',
+        description: 'Análisis y reportes de asistencia',
+        icon: BarChart3,
+        path: '/reportes',
+        color: 'bg-[#1A3A5C]'
+      }
+    ];
 
-  // Formatear la fecha actual para el encabezado
+    if (isAdmin) {
+      baseModules.push({
+        title: 'Gestión de Usuarios',
+        description: 'Administrar accesos y roles',
+        icon: Settings,
+        path: '/usuarios',
+        color: 'bg-slate-700'
+      });
+    }
+
+    return baseModules;
+  }, [isAdmin]);
+
   const fechaHoy = new Date().toLocaleDateString('es-MX', {
     weekday: 'long',
     day: 'numeric',
@@ -90,7 +103,6 @@ export function Dashboard() {
       <Header title="Panel Principal" />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Resumen del día */}
         <div className="mb-8">
           <div className="flex justify-between items-end mb-4">
             <div>
@@ -118,13 +130,13 @@ export function Dashboard() {
             />
             <StatCard
               title="Entradas Registradas"
-              value={stats.entradasRegistradas}
+              value={stats.entradasHoy}
               icon={UserCheck}
               color="green"
             />
             <StatCard
               title="Alertas Activas"
-              value={stats.alertasActivas}
+              value={stats.alertas}
               icon={AlertTriangle}
               color="red"
             />
@@ -137,7 +149,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Módulos del sistema */}
         <div>
           <h2 className="text-xl font-bold text-[#1E1E1E] mb-4">Módulos del Sistema</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -165,17 +176,15 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Sección de alertas dinámica */}
         {stats.alertasActivas > 0 && (
           <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
             <h2 className="text-xl font-bold text-[#1E1E1E] mb-4">Alertas Recientes</h2>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="space-y-3">
-                {/* Mapear un array de alertas reales en el futuro */}
                 <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
                   <AlertTriangle className="w-5 h-5 text-[#EF4444] flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-[#1E1E1E]">Sin alertas críticas en este momento.</p>
+                    <p className="text-sm font-medium text-[#1E1E1E]">Se han detectado {stats.alertasActivas} alertas de asistencia.</p>
                   </div>
                 </div>
               </div>

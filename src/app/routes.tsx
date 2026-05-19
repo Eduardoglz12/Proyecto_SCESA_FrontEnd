@@ -4,11 +4,17 @@ import { Dashboard } from "./pages/Dashboard";
 import { Alumnos } from "./pages/Alumnos";
 import { Admin } from "./pages/Admin";
 import { Reportes } from "./pages/Reportes";
+import { Usuarios } from "./pages/Usuarios";
+import { useAuth } from "./context/AuthContext";
 
 // Componente para proteger rutas
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = localStorage.getItem('scesa_auth') === 'true';
+  const { isAuthenticated, loading } = useAuth();
   
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#F5F7FA]">Cargando...</div>;
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
@@ -50,6 +56,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Reportes />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/usuarios",
+    element: (
+      <ProtectedRoute>
+        <Usuarios />
       </ProtectedRoute>
     ),
   },

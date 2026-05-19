@@ -1,46 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, Calendar, Download, TrendingUp, TrendingDown, Users, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from 'sonner';
-
-interface Alumno {
-  numeroControl: string;
-  grado: number;
-  grupo: string;
-  turno: string;
-}
-
-interface RegistroAsistencia {
-  numeroControl: string;
-  evento: string;
-  fecha: string;
-}
+import { api } from '../services/api';
+import { Alumno, AsistenciaBackend, Registro } from '../../types';
+import { generarPDFAsistencia } from '../utils/pdfGenerator';
 
 export function Reportes() {
   const navigate = useNavigate();
-  const [periodo, setPeriodo] = useState('semana');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
-  const [asistencias, setAsistencias] = useState<RegistroAsistencia[]>([]);
+  const [asistencias, setAsistencias] = useState<AsistenciaBackend[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  const API_URL = import.meta.env.VITE_API_URL;
   const COLORS = ['#22C55E', '#EF4444'];
 
   const cargarDatos = async () => {
     try {
       setCargando(true);
       const [resAlumnos, resAsistencias] = await Promise.all([
-        fetch(`${API_URL}/api/alumnos`),
-        fetch(`${API_URL}/api/asistencia`)
+        api.get<Alumno[]>('/api/alumnos'),
+        api.get<AsistenciaBackend[]>('/api/asistencia')
       ]);
-      setAlumnos(await resAlumnos.json());
-      setAsistencias(await resAsistencias.json());
-    } catch (error) {
-      toast.error("Error al cargar datos para reportes");
+      setAlumnos(resAlumnos);
+      setAsistencias(resAsistencias);
+    } catch (error: any) {
+      toast.error(error.message || "Error al cargar datos para reportes");
     } finally {
       setCargando(false);
     }
@@ -48,11 +35,39 @@ export function Reportes() {
 
   useEffect(() => { cargarDatos(); }, []);
 
-  // LÓGICA DE PROCESAMIENTO DE DATOS
+  const exportarPDF = () => {
+    if (asistencias.length === 0) return toast.error("No hay datos para exportar");
+
+    try {
+      // Transformar para el generador de PDF
+      const registros: Registro[] = asistencias.map(item => {
+        const fechaObj = new Date(item.fecha);
+        return {
+          id: item.id.toString(),
+          alumno: item.numeroControl,
+          nombre: item.nombre,
+          grupo: item.grupo,
+          turno: item.turno,
+          tipo: item.evento?.toUpperCase() === 'ENTRADA' ? 'Entrada' : 'Salida',
+          hora: fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          fecha: fechaObj.toLocaleDateString('es-MX')
+        };
+      });
+
+      generarPDFAsistencia(registros, {
+        grupo: 'TODOS',
+        turno: 'AMBOS',
+        tipo: 'TODOS'
+      });
+      toast.success("Reporte estadístico generado");
+    } catch (error) {
+      toast.error("Error al generar PDF");
+    }
+  };
+
   const reportData = useMemo(() => {
     if (alumnos.length === 0) return { diaria: [], puntualidad: [], porGrupo: [] };
 
-    // 1. Asistencia Diaria (Últimos 5 días hábiles)
     const ultimosDias = [...Array(5)].map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -62,7 +77,7 @@ export function Reportes() {
     const diaria = ultimosDias.map(fecha => {
       const presentesSet = new Set(
         asistencias
-          .filter(a => a.fecha.startsWith(fecha) && a.evento === 'ENTRADA')
+          .filter(a => a.fecha.startsWith(fecha) && a.evento?.toUpperCase() === 'ENTRADA')
           .map(a => a.numeroControl)
       );
       return {
@@ -72,34 +87,34 @@ export function Reportes() {
       };
     });
 
-    // 2. Puntualidad (Simulada: Entradas antes de las 07:15 o 13:15)
     const aTiempo = asistencias.filter(a => {
-      if (a.evento !== 'ENTRADA') return false;
-      const hora = new Date(a.fecha).getHours();
-      const min = new Date(a.fecha).getMinutes();
+      if (a.evento?.toUpperCase() !== 'ENTRADA') return false;
+      const fechaObj = new Date(a.fecha);
+      const hora = fechaObj.getHours();
+      const min = fechaObj.getMinutes();
       const tiempo = hora * 60 + min;
       return tiempo <= 435 || (tiempo >= 780 && tiempo <= 795); // 7:15 o 13:15
     }).length;
 
+    const totalEntradas = asistencias.filter(a => a.evento?.toUpperCase() === 'ENTRADA').length;
     const puntualidad = [
       { nombre: 'A tiempo', valor: aTiempo },
-      { nombre: 'Retardos', valor: Math.max(0, asistencias.filter(a => a.evento === 'ENTRADA').length - aTiempo) }
+      { nombre: 'Retardos', valor: Math.max(0, totalEntradas - aTiempo) }
     ];
 
-    // 3. Estadísticas por Grado/Grupo
     const gruposUnicos = Array.from(new Set(alumnos.map(al => `${al.grado}°${al.grupo}`)));
     const porGrupo = gruposUnicos.map(id => {
       const alumnosEnGrupo = alumnos.filter(al => `${al.grado}°${al.grupo}` === id);
       const hoy = new Date().toISOString().split('T')[0];
       const presentes = asistencias.filter(a =>
         a.fecha.startsWith(hoy) &&
+        a.evento?.toUpperCase() === 'ENTRADA' &&
         alumnosEnGrupo.some(al => al.numeroControl === a.numeroControl)
       ).length;
 
       return {
         grupo: id,
         promedio: Math.round((presentes / alumnosEnGrupo.length) * 100) || 0,
-        tendencia: Math.random() > 0.5 ? 'up' : 'down' // Simulado por ahora
       };
     });
 
@@ -115,12 +130,16 @@ export function Reportes() {
           <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-[#2E6DA4]">
             <ArrowLeft className="w-4 h-4 mr-2" /> Volver al Panel Principal
           </Button>
-          <Button onClick={cargarDatos} disabled={cargando} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${cargando ? 'animate-spin' : ''}`} /> Sincronizar
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportarPDF} variant="outline" className="gap-2 border-red-600 text-red-600 hover:bg-red-50">
+              <FileText className="w-4 h-4" /> Exportar PDF
+            </Button>
+            <Button onClick={cargarDatos} disabled={cargando} variant="outline">
+              <RefreshCw className={`w-4 h-4 mr-2 ${cargando ? 'animate-spin' : ''}`} /> Sincronizar
+            </Button>
+          </div>
         </div>
 
-        {/* Gráficos Reales */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-bold mb-6">Asistencia Diaria (Real)</h3>
@@ -157,7 +176,6 @@ export function Reportes() {
           </div>
         </div>
 
-        {/* Tabla Dinámica por Grupo */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-bold mb-6">Estado Actual por Grupo</h3>
           <div className="overflow-x-auto">

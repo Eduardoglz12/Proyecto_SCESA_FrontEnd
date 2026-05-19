@@ -1,34 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, Clock, LogIn, LogOut, Users, RefreshCw, Download, Filter } from 'lucide-react';
+import { ArrowLeft, Clock, LogIn, LogOut, RefreshCw, Download, Filter, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-
-// 1. Interfaz que viene del backend en Ktor
-interface AsistenciaBackend {
-  id: number;
-  numeroControl: string;
-  nombre: string;
-  grupo: string;
-  turno: string;
-  evento: string;
-  fecha: string;
-  operador: number;
-}
-
-// 2. Interfaz para la interfaz de usuario (UI)
-interface Registro {
-  id: string;
-  alumno: string;
-  nombre: string;
-  grupo: string;
-  turno: string;
-  tipo: 'Entrada' | 'Salida';
-  hora: string;
-  fecha: string; // Formato DD/MM/YYYY para comparaciones
-}
+import { api } from '../services/api';
+import { AsistenciaBackend, Registro } from '../../types';
+import { generarPDFAsistencia } from '../utils/pdfGenerator';
 
 export function Admin() {
   const navigate = useNavigate();
@@ -40,16 +19,10 @@ export function Admin() {
   const [filtroTurno, setFiltroTurno] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
-  // 3. Sincronización con el servidor Railway
   const fetchAsistencias = async () => {
     try {
       setCargando(true);
-      const response = await fetch(`${API_URL}/api/asistencia`);
-      if (!response.ok) throw new Error('Error en la respuesta del servidor');
-
-      const data: AsistenciaBackend[] = await response.json();
+      const data = await api.get<AsistenciaBackend[]>('/api/asistencia');
 
       const transformados: Registro[] = data.map(item => {
         const fechaObj = new Date(item.fecha);
@@ -59,16 +32,15 @@ export function Admin() {
           nombre: item.nombre,
           grupo: item.grupo,
           turno: item.turno,
-          tipo: item.evento === 'ENTRADA' ? 'Entrada' : 'Salida',
+          tipo: item.evento?.toUpperCase() === 'ENTRADA' ? 'Entrada' : 'Salida',
           hora: fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-          fecha: fechaObj.toLocaleDateString('es-MX') // DD/MM/YYYY
+          fecha: fechaObj.toLocaleDateString('es-MX')
         };
       });
 
       setRegistros(transformados);
-    } catch (error) {
-      console.error(error);
-      toast.error("Error: No se pudo conectar con la base de datos");
+    } catch (error: any) {
+      toast.error(error.message || "Error al conectar con la base de datos");
     } finally {
       setCargando(false);
     }
@@ -76,19 +48,20 @@ export function Admin() {
 
   useEffect(() => {
     fetchAsistencias();
-    const interval = setInterval(fetchAsistencias, 30000); // Pooling cada 30s
+    const interval = setInterval(fetchAsistencias, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // LÓGICA DE FILTRADO Y ESTADÍSTICAS
+  const gruposDisponibles = useMemo(() => {
+    const grupos = new Set(registros.map(r => r.grupo));
+    return Array.from(grupos).sort();
+  }, [registros]);
 
   const fechaHoyStr = new Date().toLocaleDateString('es-MX');
 
-  // Estadísticas filtradas solo para Hoy
   const entradasHoyCount = registros.filter(r => r.tipo === 'Entrada' && r.fecha === fechaHoyStr).length;
   const salidasHoyCount = registros.filter(r => r.tipo === 'Salida' && r.fecha === fechaHoyStr).length;
 
-  // Filtrado de la tabla según Selects
   const filteredRegistros = registros.filter(registro => {
     const grupoMatch = filtroGrupo === 'todos' || registro.grupo === filtroGrupo;
     const turnoMatch = filtroTurno === 'todos' || registro.turno.toUpperCase() === filtroTurno.toUpperCase();
@@ -96,7 +69,6 @@ export function Admin() {
     return grupoMatch && turnoMatch && tipoMatch;
   });
 
-  // Función para exportar a CSV (Excel)
   const exportarCSV = () => {
     if (filteredRegistros.length === 0) return toast.error("No hay datos para exportar");
 
@@ -113,7 +85,21 @@ export function Admin() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Reporte generado exitosamente");
+    toast.success("Reporte CSV generado exitosamente");
+  };
+
+  const exportarPDF = () => {
+    if (filteredRegistros.length === 0) return toast.error("No hay datos para exportar");
+    try {
+      generarPDFAsistencia(filteredRegistros, {
+        grupo: filtroGrupo,
+        turno: filtroTurno,
+        tipo: filtroTipo
+      });
+      toast.success("Reporte PDF generado exitosamente");
+    } catch (error) {
+      toast.error("Error al generar el PDF");
+    }
   };
 
   return (
@@ -128,7 +114,10 @@ export function Admin() {
 
           <div className="flex gap-2">
             <Button onClick={exportarCSV} variant="outline" className="gap-2 border-[#2E6DA4] text-[#2E6DA4]">
-              <Download className="w-4 h-4" /> Exportar Reporte
+              <Download className="w-4 h-4" /> CSV
+            </Button>
+            <Button onClick={exportarPDF} variant="outline" className="gap-2 border-red-600 text-red-600 hover:bg-red-50">
+              <FileText className="w-4 h-4" /> PDF
             </Button>
             <Button onClick={fetchAsistencias} disabled={cargando} className="gap-2 bg-[#2E6DA4]">
               <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} /> Sincronizar
@@ -136,7 +125,6 @@ export function Admin() {
           </div>
         </div>
 
-        {/* Tarjetas de Resumen de Hoy */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <p className="text-sm text-gray-500 mb-1">Total Histórico</p>
@@ -159,7 +147,6 @@ export function Admin() {
           </div>
         </div>
 
-        {/* Sección de Filtros */}
         <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2 text-gray-600 mr-2">
             <Filter className="w-4 h-4" /> <span className="text-sm font-bold">Filtros:</span>
@@ -169,9 +156,9 @@ export function Admin() {
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="Grupo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los Grupos</SelectItem>
-              {/* Mapear grupos únicos de los registros */}
-              <SelectItem value="6A">6to A</SelectItem>
-              <SelectItem value="6B">6to B</SelectItem>
+              {gruposDisponibles.map(grupo => (
+                <SelectItem key={grupo} value={grupo}>{grupo}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -194,7 +181,6 @@ export function Admin() {
           </Select>
         </div>
 
-        {/* Tabla de Registros en Tiempo Real */}
         <div className="bg-white rounded-lg shadow-md border overflow-hidden">
           <div className="p-4 bg-gray-50 border-b">
             <h2 className="font-bold text-gray-700">Bitácora SCESA - CETIS 24</h2>
@@ -228,7 +214,7 @@ export function Admin() {
                     <td className="py-4 px-4 font-semibold text-gray-700">{reg.grupo}</td>
                     <td className="py-4 px-4">
                       <span className={`px-2 py-1 text-[10px] font-bold rounded ${
-                        reg.turno === 'MATUTINO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                        reg.turno?.toUpperCase() === 'MATUTINO' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
                       }`}>
                         {reg.turno}
                       </span>

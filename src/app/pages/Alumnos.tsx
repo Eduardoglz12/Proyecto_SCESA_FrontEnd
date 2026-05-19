@@ -1,32 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save } from 'lucide-react';
+import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save, Upload } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { useRef } from 'react';
-import { ArrowLeft, UserPlus, Search, Edit, Trash2, Users, RefreshCw, Hash, Save, Upload } from 'lucide-react';
-
-interface Alumno {
-  numeroControl: string;
-  nombreCompleto: string;
-  grado: number;
-  grupo: string;
-  turno: string;
-  nombreTutor: string;
-  emailTutor: string;
-}
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { Alumno } from '../../types';
 
 export function Alumnos() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // ESTADOS PARA EDICIÓN
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState('');
 
@@ -40,18 +33,13 @@ export function Alumnos() {
     emailTutor: ''
   });
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
-  // 1. Cargar alumnos
   const fetchAlumnos = async () => {
     try {
       setCargando(true);
-      const response = await fetch(`${API_URL}/api/alumnos`);
-      if (!response.ok) throw new Error('Error al obtener el padrón');
-      const data = await response.json();
+      const data = await api.get<Alumno[]>('/api/alumnos');
       setAlumnos(data);
-    } catch (error) {
-      toast.error("No se pudo conectar con el servidor");
+    } catch (error: any) {
+      toast.error(error.message || "No se pudo conectar con el servidor");
     } finally {
       setCargando(false);
     }
@@ -61,28 +49,18 @@ export function Alumnos() {
     fetchAlumnos();
   }, []);
 
-  // 2. Función para Eliminar
   const eliminarAlumno = async (nc: string, nombre: string) => {
     if (!confirm(`¿Estás seguro de eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/alumnos/${nc}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        toast.success("Alumno eliminado correctamente");
-        fetchAlumnos();
-      } else {
-        const errorMsg = await res.text();
-        toast.error(`Error: ${errorMsg}`);
-      }
-    } catch (error) {
-      toast.error("No se pudo eliminar al alumno");
+      await api.delete(`/api/alumnos/${nc}`);
+      toast.success("Alumno eliminado correctamente");
+      fetchAlumnos();
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
     }
   };
 
-  // 3. Preparar Edición (Llena el formulario con los datos existentes)
   const prepararEdicion = (alumno: Alumno) => {
     setFormData({
       numeroControl: alumno.numeroControl,
@@ -99,7 +77,6 @@ export function Alumnos() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 4. Cancelar Formulario (Limpia estados)
   const cancelarFormulario = () => {
     setShowForm(false);
     setIsEditing(false);
@@ -107,9 +84,17 @@ export function Alumnos() {
     setFormData({ numeroControl: '', nombreCompleto: '', grado: '', grupo: '', turno: '', nombreTutor: '', emailTutor: '' });
   };
 
-  // 5. Guardar (POST o PUT)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validaciones extra
+    if (formData.numeroControl.length < 8) {
+      return toast.error("El número de control debe tener al menos 8 caracteres");
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(formData.emailTutor)) {
+      return toast.error("El formato del email del tutor no es válido");
+    }
 
     const payload = {
       ...formData,
@@ -117,26 +102,17 @@ export function Alumnos() {
     };
 
     try {
-      // Si estamos editando usamos PUT, si no usamos POST
-      const url = isEditing ? `${API_URL}/api/alumnos/${editingId}` : `${API_URL}/api/alumnos`;
-      const method = isEditing ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        toast.success(isEditing ? "Datos actualizados" : "Alumno registrado");
-        cancelarFormulario();
-        fetchAlumnos();
+      if (isEditing) {
+        await api.put(`/api/alumnos/${editingId}`, payload);
       } else {
-        const errorMsg = await response.text();
-        toast.error(`Error: ${errorMsg}`);
+        await api.post('/api/alumnos', payload);
       }
-    } catch (error) {
-      toast.error("Error de conexión al guardar");
+
+      toast.success(isEditing ? "Datos actualizados" : "Alumno registrado");
+      cancelarFormulario();
+      fetchAlumnos();
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
     }
   };
 
@@ -145,42 +121,31 @@ export function Alumnos() {
     alumno.numeroControl.includes(searchTerm)
   );
 
-// 1. Crea la referencia para el input de archivo
-const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-// 2. Función que se dispara cuando se selecciona un archivo
-const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // FormData para enviar archivos por HTTP
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    toast.loading("Procesando archivo CSV...", { id: "import" });
-
-
-    const response = await fetch(`${API_URL}/api/alumnos/importar`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const msg = await response.text();
-
-    if (response.ok) {
-      toast.success(msg, { id: "import" });
-      fetchAlumnos(); // Refrescar la tabla para ver los nuevos datos
-    } else {
-      toast.error(`Error: ${msg}`, { id: "import" });
+    // Validación de tipo de archivo
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      return toast.error("Solo se permiten archivos .csv");
     }
-  } catch (error) {
-    toast.error("Error de conexión al importar", { id: "import" });
-  } finally {
-    // Limpiar el input para volver a subir el mismo archivo si es necesario
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-};
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    try {
+      toast.loading("Procesando archivo CSV...", { id: "import" });
+      const msg = await api.post<string>('/api/alumnos/importar', fd);
+      toast.success(msg || "Importación exitosa", { id: "import" });
+      fetchAlumnos();
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: "import" });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
@@ -202,30 +167,33 @@ const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
               <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
             </Button>
 
-            {/* Input oculto controlado por el botón */}
-            <input
-              type="file"
-              accept=".csv"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleImportCSV}
-            />
+            {isAdmin && (
+              <>
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleImportCSV}
+                />
 
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="border-[#1A3A5C] text-[#1A3A5C] hover:bg-slate-50"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Importar CSV
-            </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-[#1A3A5C] text-[#1A3A5C] hover:bg-slate-50"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar CSV
+                </Button>
 
-            <Button
-              onClick={() => showForm ? cancelarFormulario() : setShowForm(true)}
-              className="bg-[#1A3A5C] hover:bg-[#1A3A5C]/90 text-white"
-            >
-              {showForm ? 'Cancelar' : <><UserPlus className="w-4 h-4 mr-2" /> Nuevo Alumno</>}
-            </Button>
+                <Button
+                  onClick={() => showForm ? cancelarFormulario() : setShowForm(true)}
+                  className="bg-[#1A3A5C] hover:bg-[#1A3A5C]/90 text-white"
+                >
+                  {showForm ? 'Cancelar' : <><UserPlus className="w-4 h-4 mr-2" /> Nuevo Alumno</>}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -242,7 +210,7 @@ const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       value={formData.numeroControl}
-                      disabled={isEditing} // No dejamos cambiar el NC si estamos editando
+                      disabled={isEditing}
                       onChange={(e) => setFormData({ ...formData, numeroControl: e.target.value })}
                       placeholder="Ej. 2134567890"
                       className="pl-10 bg-white border-gray-300 disabled:bg-gray-100"
@@ -374,24 +342,26 @@ const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
                       <span className="px-2 py-1 bg-blue-100 text-[#2E6DA4] text-xs rounded">{alumno.turno}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => prepararEdicion(alumno)}
-                            className="text-[#2E6DA4] hover:bg-blue-50"
-                        >
-                            <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => eliminarAlumno(alumno.numeroControl, alumno.nombreCompleto)}
-                            className="text-[#EF4444] hover:bg-red-50"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => prepararEdicion(alumno)}
+                              className="text-[#2E6DA4] hover:bg-blue-50"
+                          >
+                              <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => eliminarAlumno(alumno.numeroControl, alumno.nombreCompleto)}
+                              className="text-[#EF4444] hover:bg-red-50"
+                          >
+                              <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

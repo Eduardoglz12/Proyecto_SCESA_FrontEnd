@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router';
 import { Lock, User, AlertCircle } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 
 export function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,13 +18,16 @@ export function Login() {
     setError('');
     setLoading(true);
 
-    // Simulación de autenticación (Falta implemetación de usuarios y sesiones)
+    // Simulación de autenticación
     setTimeout(() => {
       if (usuario === 'admin' && password === 'cetis24') {
-        localStorage.setItem('scesa_auth', 'true');
+        login('fake-jwt-token', { username: 'Administrador', role: 'admin' });
+        navigate('/dashboard');
+      } else if (usuario === 'operador' && password === 'cetis24') {
+        login('fake-jwt-token-op', { username: 'Operador SCESA', role: 'operator' });
         navigate('/dashboard');
       } else {
-        setError('Usuario o contraseña incorrectos. Dispositivo no autorizado o credenciales inválidas.');
+        setError('Usuario o contraseña incorrectos.');
       }
       setLoading(false);
     }, 800);

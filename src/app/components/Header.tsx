@@ -1,5 +1,6 @@
 import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   title: string;
@@ -8,9 +9,10 @@ interface HeaderProps {
 
 export function Header({ title, showLogout = true }: HeaderProps) {
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('scesa_auth');
+    logout();
     navigate('/');
   };
 
@@ -30,7 +32,7 @@ export function Header({ title, showLogout = true }: HeaderProps) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <User className="w-4 h-4" />
-              <span>Personal Autorizado</span>
+              <span>{user?.username || 'Personal Autorizado'}</span>
             </div>
             <button
               onClick={handleLogout}

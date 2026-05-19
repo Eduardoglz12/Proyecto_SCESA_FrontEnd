@@ -34,10 +34,10 @@ export function Dashboard() {
       const data = await api.get<DashboardStats>('/api/asistencia/stats');
 
       setStats({
-        totalAlumnos: data.totalAlumnos,
-        entradasRegistradas: data.entradasHoy,
-        totalPresentes: data.presentes,
-        alertasActivas: data.alertas
+        totalAlumnos: data.totalAlumnos || 0,
+        entradasRegistradas: data.entradasHoy || 0,
+        totalPresentes: data.presentes || 0,
+        alertasActivas: data.alertas || 0
       });
 
     } catch (error: any) {

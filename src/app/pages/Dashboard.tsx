@@ -130,13 +130,13 @@ export function Dashboard() {
             />
             <StatCard
               title="Entradas Registradas"
-              value={stats.entradasHoy}
+              value={stats.entradasRegistradas}
               icon={UserCheck}
               color="green"
             />
             <StatCard
               title="Alertas Activas"
-              value={stats.alertas}
+              value={stats.alertasActivas}
               icon={AlertTriangle}
               color="red"
             />

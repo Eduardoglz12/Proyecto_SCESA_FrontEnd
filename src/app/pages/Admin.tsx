@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
-import { ArrowLeft, Clock, LogIn, LogOut, RefreshCw, Download, Filter, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, LogIn, LogOut, RefreshCw, Download, Filter, FileText, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { api } from '../services/api';
@@ -18,6 +19,11 @@ export function Admin() {
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
   const [filtroTurno, setFiltroTurno] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
+
+  // Estados para el rango de fechas (Por defecto: Hoy)
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const [fechaInicio, setFechaInicio] = useState(hoyStr);
+  const [fechaFin, setFechaFin] = useState(hoyStr);
 
   const fetchAsistencias = async () => {
     try {
@@ -63,10 +69,14 @@ export function Admin() {
   const salidasHoyCount = registros.filter(r => r.tipo === 'Salida' && r.fecha === fechaHoyStr).length;
 
   const filteredRegistros = registros.filter(registro => {
+    const [d, m, y] = registro.fecha.split('/');
+    const fechaRegistroStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+
+    const dateMatch = fechaRegistroStr >= fechaInicio && fechaRegistroStr <= fechaFin;
     const grupoMatch = filtroGrupo === 'todos' || registro.grupo === filtroGrupo;
     const turnoMatch = filtroTurno === 'todos' || registro.turno.toUpperCase() === filtroTurno.toUpperCase();
     const tipoMatch = filtroTipo === 'todos' || registro.tipo.toLowerCase() === filtroTipo.toLowerCase();
-    return grupoMatch && turnoMatch && tipoMatch;
+    return dateMatch && grupoMatch && turnoMatch && tipoMatch;
   });
 
   const exportarCSV = () => {
@@ -147,13 +157,39 @@ export function Admin() {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 text-gray-600 mr-2">
+        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex flex-wrap gap-4 items-end">
+          <div className="flex items-center gap-2 text-gray-600 mr-2 mb-3">
             <Filter className="w-4 h-4" /> <span className="text-sm font-bold">Filtros:</span>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Desde</label>
+            <div className="relative">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+              <Input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="w-[140px] h-9 text-xs pl-7"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Hasta</label>
+            <div className="relative">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+              <Input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="w-[140px] h-9 text-xs pl-7"
+              />
+            </div>
+          </div>
+
           <Select value={filtroGrupo} onValueChange={setFiltroGrupo}>
-            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Grupo" /></SelectTrigger>
+            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Grupo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los Grupos</SelectItem>
               {gruposDisponibles.map(grupo => (
@@ -163,7 +199,7 @@ export function Admin() {
           </Select>
 
           <Select value={filtroTurno} onValueChange={setFiltroTurno}>
-            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Turno" /></SelectTrigger>
+            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Turno" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Ambos Turnos</SelectItem>
               <SelectItem value="matutino">Matutino</SelectItem>
@@ -172,7 +208,7 @@ export function Admin() {
           </Select>
 
           <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Evento" /></SelectTrigger>
+            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="Evento" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="entrada">Entradas</SelectItem>

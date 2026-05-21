@@ -59,7 +59,7 @@ export function Admin() {
   }, []);
 
   const gruposDisponibles = useMemo(() => {
-    const grupos = new Set(registros.map(r => r.grupo));
+    const grupos = new Set(registros.map(r => `${r.grado}${r.grupo}`));
     return Array.from(grupos).sort();
   }, [registros]);
 
@@ -73,7 +73,8 @@ export function Admin() {
     const fechaRegistroStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
 
     const dateMatch = fechaRegistroStr >= fechaInicio && fechaRegistroStr <= fechaFin;
-    const grupoMatch = filtroGrupo === 'todos' || registro.grupo === filtroGrupo;
+    const grupoFormateado = `${registro.grado}${registro.grupo}`;
+    const grupoMatch = filtroGrupo === 'todos' || grupoFormateado === filtroGrupo;
     const turnoMatch = filtroTurno === 'todos' || registro.turno.toUpperCase() === filtroTurno.toUpperCase();
     const tipoMatch = filtroTipo === 'todos' || registro.tipo.toLowerCase() === filtroTipo.toLowerCase();
     return dateMatch && grupoMatch && turnoMatch && tipoMatch;
@@ -165,12 +166,12 @@ export function Admin() {
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Desde</label>
             <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <Input
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-[140px] h-9 text-xs pl-7"
+                className="w-[165px] h-10 text-sm pl-8 pr-2"
               />
             </div>
           </div>
@@ -178,12 +179,12 @@ export function Admin() {
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Hasta</label>
             <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <Input
                 type="date"
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
-                className="w-[140px] h-9 text-xs pl-7"
+                className="w-[165px] h-10 text-sm pl-8 pr-2"
               />
             </div>
           </div>

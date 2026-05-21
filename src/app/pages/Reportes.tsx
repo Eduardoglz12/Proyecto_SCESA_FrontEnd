@@ -41,36 +41,6 @@ export function Reportes() {
 
   useEffect(() => { cargarDatos(); }, []);
 
-  const exportarPDF = () => {
-    if (asistencias.length === 0) return toast.error("No hay datos para exportar");
-
-    try {
-      // Transformar para el generador de PDF
-      const registros: Registro[] = asistencias.map(item => {
-        const fechaObj = new Date(item.fecha);
-        return {
-          id: item.id.toString(),
-          alumno: item.numeroControl,
-          nombre: item.nombre,
-          grupo: item.grupo,
-          turno: item.turno,
-          tipo: item.evento?.toUpperCase() === 'ENTRADA' ? 'Entrada' : 'Salida',
-          hora: fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-          fecha: fechaObj.toLocaleDateString('es-MX')
-        };
-      });
-
-      generarPDFAsistencia(registros, {
-        grupo: 'TODOS',
-        turno: 'AMBOS',
-        tipo: 'TODOS'
-      });
-      toast.success("Reporte estadístico generado");
-    } catch (error) {
-      toast.error("Error al generar PDF");
-    }
-  };
-
   // Filtrar asistencias según el rango seleccionado
   const asistenciasFiltradas = useMemo(() => {
     return asistencias.filter(a => {

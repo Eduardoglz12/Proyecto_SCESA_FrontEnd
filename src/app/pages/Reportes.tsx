@@ -81,9 +81,6 @@ export function Reportes() {
   const reportData = useMemo(() => {
     if (alumnos.length === 0) return { diaria: [], puntualidad: [], porGrupo: [] };
 
-    // 1. Asistencia Diaria (Días dentro del rango)
-    // Si el rango es de un solo día, mostramos solo ese día.
-    // Si es mayor, mostramos los días intermedios.
     const start = new Date(fechaInicio);
     const end = new Date(fechaFin);
     const dias = [];
@@ -91,7 +88,6 @@ export function Reportes() {
         dias.push(new Date(d).toISOString().split('T')[0]);
     }
 
-    // Limitamos a los últimos 10 días si el rango es muy grande para que la gráfica no se rompa
     const diasAMostrar = dias.slice(-10);
 
     const diaria = diasAMostrar.map(fecha => {
@@ -107,7 +103,6 @@ export function Reportes() {
       };
     });
 
-    // 2. Puntualidad (Basado en el filtro actual)
     const aTiempo = asistenciasFiltradas.filter(a => {
       if (a.evento?.toUpperCase() !== 'ENTRADA') return false;
       const fechaObj = new Date(a.fecha);
@@ -123,18 +118,15 @@ export function Reportes() {
       { nombre: 'Retardos', valor: Math.max(0, totalEntradas - aTiempo) }
     ];
 
-    // 3. Estadísticas por Grado/Grupo (Basado en el último día del rango o el rango completo)
     const gruposUnicos = Array.from(new Set(alumnos.map(al => `${al.grado}°${al.grupo}`)));
     const porGrupo = gruposUnicos.map(id => {
       const alumnosEnGrupo = alumnos.filter(al => `${al.grado}°${al.grupo}` === id);
 
-      // Asistencia promedio en el rango para este grupo
       const asistenciasGrupo = asistenciasFiltradas.filter(a =>
         a.evento?.toUpperCase() === 'ENTRADA' &&
         alumnosEnGrupo.some(al => al.numeroControl === a.numeroControl)
       );
 
-      // Calculamos un promedio aproximado: (total asistencias / (alumnos * dias en rango))
       const diasEnRango = dias.length || 1;
       const promedio = Math.round((asistenciasGrupo.length / (alumnosEnGrupo.length * diasEnRango)) * 100) || 0;
 
@@ -152,6 +144,20 @@ export function Reportes() {
       <Header title="Reportes y Estadísticas" />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-[#2E6DA4]">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Volver al Panel Principal
+          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportarPDF} variant="outline" className="gap-2 border-red-600 text-red-600 hover:bg-red-50">
+              <FileText className="w-4 h-4" /> Exportar PDF
+            </Button>
+            <Button onClick={cargarDatos} disabled={cargando} variant="outline">
+              <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} /> Sincronizar
+            </Button>
+          </div>
+        </div>
+
         {/* Controles de Rango */}
         <div className="bg-white p-6 rounded-lg shadow-sm border mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
@@ -178,20 +184,6 @@ export function Reportes() {
               />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={exportarPDF} variant="outline" className="gap-2 border-red-600 text-red-600 hover:bg-red-50">
-              <FileText className="w-4 h-4" /> Exportar PDF
-            </Button>
-            <Button onClick={cargarDatos} disabled={cargando} variant="outline">
-              <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex justify-between mb-6">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-[#2E6DA4]">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Volver al Panel Principal
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

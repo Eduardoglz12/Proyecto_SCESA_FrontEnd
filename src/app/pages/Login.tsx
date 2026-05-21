@@ -4,6 +4,7 @@ import { Lock, User, AlertCircle } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,24 +14,24 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulación de autenticación
-    setTimeout(() => {
-      if (usuario === 'admin' && password === 'cetis24') {
-        login('fake-jwt-token', { username: 'Administrador', role: 'admin' });
-        navigate('/dashboard');
-      } else if (usuario === 'operador' && password === 'cetis24') {
-        login('fake-jwt-token-op', { username: 'Operador SCESA', role: 'operator' });
-        navigate('/dashboard');
-      } else {
-        setError('Usuario o contraseña incorrectos.');
-      }
+    try {
+      const response = await api.post<{ token: string, user: any }>('/api/login', {
+        usuario,
+        contrasena: password
+      });
+
+      login(response.token, response.user);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Usuario o contraseña incorrectos.');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (

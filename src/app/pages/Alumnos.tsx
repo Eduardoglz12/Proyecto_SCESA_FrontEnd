@@ -22,6 +22,7 @@ export function Alumnos() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState('');
+  const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     numeroControl: '',
@@ -104,11 +105,16 @@ export function Alumnos() {
     try {
       if (isEditing) {
         await api.put(`/api/alumnos/${editingId}`, payload);
+        toast.success("Datos actualizados");
       } else {
         await api.post('/api/alumnos', payload);
+        toast.success("Alumno registrado");
+        // Activar resaltado para el nuevo alumno
+        setNewlyAddedId(formData.numeroControl);
+        // Quitar el resaltado después de 3 segundos
+        setTimeout(() => setNewlyAddedId(null), 3000);
       }
 
-      toast.success(isEditing ? "Datos actualizados" : "Alumno registrado");
       cancelarFormulario();
       fetchAlumnos();
     } catch (error: any) {
@@ -327,7 +333,12 @@ export function Alumnos() {
               </thead>
               <tbody>
                 {filteredAlumnos.map((alumno) => (
-                  <tr key={alumno.numeroControl} className="border-b border-gray-100 hover:bg-[#F5F7FA] transition-colors">
+                  <tr
+                    key={alumno.numeroControl}
+                    className={`border-b border-gray-100 hover:bg-[#F5F7FA] transition-all duration-500 ${
+                      newlyAddedId === alumno.numeroControl ? 'bg-green-50 ring-2 ring-green-200 ring-inset' : ''
+                    }`}
+                  >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#2E6DA4] rounded-full flex items-center justify-center flex-shrink-0">

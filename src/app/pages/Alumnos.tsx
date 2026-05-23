@@ -46,6 +46,20 @@ export function Alumnos() {
     }
   };
 
+  // Efecto para hacer scroll al nuevo alumno registrado
+  useEffect(() => {
+    if (newlyAddedId) {
+      // Usamos un pequeño delay para asegurar que el DOM se haya actualizado con el nuevo elemento
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`alumno-${newlyAddedId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [newlyAddedId, alumnos]);
+
   useEffect(() => {
     fetchAlumnos();
   }, []);
@@ -335,6 +349,7 @@ export function Alumnos() {
                 {filteredAlumnos.map((alumno) => (
                   <tr
                     key={alumno.numeroControl}
+                    id={`alumno-${alumno.numeroControl}`}
                     className={`border-b border-gray-100 hover:bg-[#F5F7FA] transition-all duration-500 ${
                       newlyAddedId === alumno.numeroControl ? 'bg-green-50 ring-2 ring-green-200 ring-inset' : ''
                     }`}

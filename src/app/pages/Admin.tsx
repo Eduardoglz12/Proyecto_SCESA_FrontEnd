@@ -20,10 +20,17 @@ export function Admin() {
   const [filtroTurno, setFiltroTurno] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
 
-  // Estados para el rango de fechas (Por defecto: Hoy)
-  const hoyStr = new Date().toISOString().split('T')[0];
-  const [fechaInicio, setFechaInicio] = useState(hoyStr);
-  const [fechaFin, setFechaFin] = useState(hoyStr);
+  // Estados para el rango de fechas (Por defecto: Hoy en hora local real)
+  const getFechaLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [fechaInicio, setFechaInicio] = useState(getFechaLocal());
+  const [fechaFin, setFechaFin] = useState(getFechaLocal());
 
   const fetchAsistencias = async () => {
     try {
@@ -36,6 +43,7 @@ export function Admin() {
           id: item.id.toString(),
           alumno: item.numeroControl,
           nombre: item.nombre,
+          grado: item.grado,
           grupo: item.grupo,
           turno: item.turno,
           tipo: item.evento?.toUpperCase() === 'ENTRADA' ? 'Entrada' : 'Salida',
@@ -59,8 +67,11 @@ export function Admin() {
   }, []);
 
   const gruposDisponibles = useMemo(() => {
-    const grupos = new Set(registros.map(r => `${r.grado}${r.grupo}`));
-    return Array.from(grupos).sort();
+    const grupos = new Set(registros.map(r => {
+        const g = r.grado ? r.grado.toString() : '';
+        return `${g}${r.grupo}`;
+    }));
+    return Array.from(grupos).filter(g => g !== '').sort();
   }, [registros]);
 
   const fechaHoyStr = new Date().toLocaleDateString('es-MX');

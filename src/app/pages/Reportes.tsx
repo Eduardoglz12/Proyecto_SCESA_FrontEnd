@@ -16,10 +16,17 @@ export function Reportes() {
   const [asistencias, setAsistencias] = useState<AsistenciaBackend[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Estados para el rango de fechas (Por defecto: Hoy)
-  const hoyStr = new Date().toISOString().split('T')[0];
-  const [fechaInicio, setFechaInicio] = useState(hoyStr);
-  const [fechaFin, setFechaFin] = useState(hoyStr);
+  // Estados para el rango de fechas (Por defecto: Hoy en hora local real)
+  const getFechaLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [fechaInicio, setFechaInicio] = useState(getFechaLocal());
+  const [fechaFin, setFechaFin] = useState(getFechaLocal());
 
   const COLORS = ['#22C55E', '#EF4444'];
 

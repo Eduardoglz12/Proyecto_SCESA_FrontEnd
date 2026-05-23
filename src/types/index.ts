@@ -12,6 +12,7 @@ export interface AsistenciaBackend {
   id: number;
   numeroControl: string;
   nombre: string;
+  grado: number;
   grupo: string;
   turno: string;
   evento: string;
@@ -23,6 +24,7 @@ export interface Registro {
   id: string;
   alumno: string;
   nombre: string;
+  grado?: number;
   grupo: string;
   turno: string;
   tipo: 'Entrada' | 'Salida';

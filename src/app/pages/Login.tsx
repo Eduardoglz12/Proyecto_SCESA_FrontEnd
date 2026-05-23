@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import logo from '@/assets/logo_cetis24.png';
 
 export function Login() {
   const navigate = useNavigate();
@@ -39,11 +40,12 @@ export function Login() {
       <div className="w-full max-w-md">
         {/* Logo y Header */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-[#ffffff] rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-24 h-24 bg-[#ffffff] rounded-full flex items-center justify-center mx-auto mb-4 p-2 overflow-hidden shadow-sm">
             <img 
-              src="src/assets/logo_cetis24.png" 
+              src={logo}
               alt="Logo oficial del CETIS 24"
-               />
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold text-[#1E1E1E] mb-2">Sistema SCESA</h1>
           <p className="text-[#6B7280]">Control de Entradas y Salidas para Alumnos</p>
